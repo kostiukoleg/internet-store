@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: internet-store
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/internet-store}
+      auto-index-creation: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-value: ${JWT_SECRET:defaultSecretKeyForJWTGenerationInDevelopment}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# CORS configuration
+cors:
+  allowed-origins: "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+
+jwt:
+  secret: ${JWT_SECRET:defaultSecretKeyForJWTGenerationInDevelopment}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    enabled: true
+
+logging:
+  level:
+    com.internetstore: INFO
+    com.internetstore.config: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
