@@ -1,5 +1,6 @@
 package com.internetstore.mapper;
 
+import com.internetstore.dto.request.AddressRequest;
 import com.internetstore.dto.request.RegisterRequest;
 import com.internetstore.dto.response.*;
 import com.internetstore.entity.*;
@@ -50,11 +51,13 @@ public interface MapStructMapper {
     // -------------------------------
     // ADDRESS MAPPINGS
     // -------------------------------
-
+    @Mapping(target = "isDefault", source = "isDefault", defaultValue = "false")
+    Address addressRequestToAddress(AddressRequest request);
     AddressResponse addressToAddressResponse(Address address);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "isDefault", source = "isDefault")
     Address addressResponseToAddress(AddressResponse addressResponse);
 
     // -------------------------------

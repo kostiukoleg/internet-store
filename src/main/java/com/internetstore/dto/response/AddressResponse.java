@@ -16,7 +16,5 @@ public class AddressResponse {
     private String state;
     private String zipCode;
     private String country;
-
-    @Builder.Default
-    private boolean isDefault = false;
+    private Boolean isDefault;
 }

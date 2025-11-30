@@ -3,6 +3,7 @@ package com.internetstore.entity;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
  * Represents a user's address stored in MongoDB.
@@ -57,7 +58,8 @@ public class Address {
      * Indicates if this address is the default for the user.
      * Each user should have at most one default address.
      */
-    private boolean isDefault;
+    @Field("isDefault")
+    private Boolean isDefault;
 
     // Optional Improvement: You could add timestamps for auditing
     // @CreatedDate

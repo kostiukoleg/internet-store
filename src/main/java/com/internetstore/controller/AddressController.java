@@ -47,8 +47,8 @@ public class AddressController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete address by ID")
-    public ResponseEntity<Void> deleteAddress(@PathVariable String id) {
-        addressService.deleteAddress(id);
+    public ResponseEntity<Void> deleteAddress(@PathVariable String id, @PathVariable String userId) {
+        addressService.deleteAddress(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

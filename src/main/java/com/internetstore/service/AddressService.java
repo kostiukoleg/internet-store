@@ -3,64 +3,105 @@ package com.internetstore.service;
 import com.internetstore.dto.request.AddressRequest;
 import com.internetstore.dto.response.AddressResponse;
 import com.internetstore.entity.Address;
+import com.internetstore.exception.ResourceNotFoundException;
 import com.internetstore.mapper.MapStructMapper;
 import com.internetstore.repository.AddressRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
-/**
- * Service layer for Address operations.
- * Uses MapStructMapper for DTO ↔ Entity conversions.
- */
 @Service
 @RequiredArgsConstructor
 public class AddressService {
 
     private final AddressRepository addressRepository;
     private final MapStructMapper mapper;
+    private final MongoTemplate mongoTemplate;
+
+    // ----------------------------
+    // Public API
+    // ----------------------------
 
     /**
      * Create a new address for a user.
+     * Handles default address logic automatically.
      */
+    @Transactional
     public AddressResponse createAddress(AddressRequest request, String userId) {
-        // MapStruct doesn’t have AddressRequest → Address yet, so we build manually
-        Address address = Address.builder()
-                .userId(userId)
-                .street(request.getStreet())
-                .city(request.getCity())
-                .state(request.getState())
-                .zipCode(request.getZipCode())
-                .country(request.getCountry())
-                .isDefault(request.isDefault())
-                .build();
+        boolean makeDefault = shouldBeDefault(request, userId);
 
-        return mapper.addressToAddressResponse(addressRepository.save(address));
+        if (makeDefault) {
+            resetUserDefaultAddress(userId);
+        }
+
+        Address address = mapper.addressRequestToAddress(request);
+        address.setUserId(userId);
+        address.setIsDefault(makeDefault);
+
+        Address saved = addressRepository.save(address);
+        return mapper.addressToAddressResponse(saved);
     }
 
     /**
-     * Get all addresses for a user.
+     * Return all addresses of a user.
      */
     public List<AddressResponse> getUserAddresses(String userId) {
-        return mapper.addressListToAddressResponseList(addressRepository.findByUserId(userId));
+        return mapper.addressListToAddressResponseList(
+                addressRepository.findByUserId(userId)
+        );
     }
 
     /**
-     * Get default address for a user.
+     * Return the default address of a user.
      */
     public AddressResponse getDefaultAddress(String userId) {
-        Optional<Address> addressOpt = addressRepository.findById(userId);
-        Address address = addressOpt.orElseThrow(() ->
-                new RuntimeException("Address not found with id: " + userId));
+        Address address = addressRepository.findByUserIdAndIsDefaultTrue(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Default address not found"));
         return mapper.addressToAddressResponse(address);
     }
 
     /**
-     * Delete an address by ID.
+     * Delete an address only if it belongs to the given user.
      */
-    public void deleteAddress(String id) {
-        addressRepository.deleteById(id);
+    @Transactional
+    public void deleteAddress(String addressId, String userId) {
+        Address address = addressRepository.findByUserIdAndId(userId, addressId)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found or does not belong to user"));
+        addressRepository.delete(address);
+    }
+
+    // ----------------------------
+    // Private helpers
+    // ----------------------------
+
+    /**
+     * Determine whether the new address should be default.
+     * True if either:
+     *   - request explicitly asks for default
+     *   - user has no existing addresses
+     */
+    private boolean shouldBeDefault(AddressRequest request, String userId) {
+        boolean requestedDefault = Boolean.TRUE.equals(request.getIsDefault());
+        boolean noExistingAddresses = addressRepository.countByUserId(userId) == 0;
+        return requestedDefault || noExistingAddresses;
+    }
+
+    /**
+     * Reset all existing default addresses for the user.
+     */
+    @Transactional
+    public void resetUserDefaultAddress(String userId) {
+        Query query = Query.query(
+                Criteria.where("userId").is(userId)
+                        .and("isDefault").is(true)
+        );
+        Update update = new Update().set("isDefault", false);
+        mongoTemplate.updateMulti(query, update, Address.class);
     }
 }

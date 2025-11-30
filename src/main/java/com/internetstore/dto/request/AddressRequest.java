@@ -24,5 +24,5 @@ public class AddressRequest {
     @NotBlank
     private String country;
 
-    private boolean isDefault;
+    private Boolean isDefault;
 }

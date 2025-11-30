@@ -1,8 +1,10 @@
 package com.internetstore.controller;
 
+import com.internetstore.dto.request.AddressRequest;
 import com.internetstore.dto.response.AddressResponse;
 import com.internetstore.dto.request.UserUpdateRequest;
 import com.internetstore.dto.response.UserResponse;
+import com.internetstore.service.AddressService;
 import com.internetstore.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11,13 +13,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
-/**
- * REST controller for user management.
- * Provides endpoints for retrieving and updating user profile and addresses.
- * All endpoints require authentication.
- */
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -26,12 +24,10 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AddressService addressService;
 
     /**
      * GET /users/me
-     * Retrieve the currently authenticated user's profile.
-     *
-     * @return HTTP 200 OK with user profile
      */
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
@@ -42,10 +38,6 @@ public class UserController {
 
     /**
      * PUT /users/me
-     * Update the currently authenticated user's profile.
-     *
-     * @param updateRequest request containing updated user data
-     * @return HTTP 200 OK with updated user profile
      */
     @PutMapping("/me")
     @Operation(summary = "Update current user profile")
@@ -56,42 +48,34 @@ public class UserController {
 
     /**
      * GET /users/me/addresses
-     * Retrieve all addresses associated with the currently authenticated user.
-     *
-     * @return HTTP 200 OK with a list of addresses
      */
     @GetMapping("/me/addresses")
     @Operation(summary = "Get user addresses")
     public ResponseEntity<List<AddressResponse>> getUserAddresses() {
-        List<AddressResponse> addresses = userService.getUserAddresses();
+        String userId = userService.getCurrentUserId(); // helper in UserService
+        List<AddressResponse> addresses = addressService.getUserAddresses(userId);
         return ResponseEntity.ok(addresses);
     }
 
     /**
      * POST /users/me/addresses
-     * Add a new address for the currently authenticated user.
-     *
-     * @param addressDto request body containing address data
-     * @return HTTP 200 OK with the saved address
      */
     @PostMapping("/me/addresses")
     @Operation(summary = "Add new address")
-    public ResponseEntity<AddressResponse> addAddress(@Valid @RequestBody AddressResponse addressDto) {
-        AddressResponse savedAddress = userService.addAddress(addressDto);
+    public ResponseEntity<AddressResponse> addAddress(@Valid @RequestBody AddressRequest request) {
+        String userId = userService.getCurrentUserId(); // get current user's ID
+        AddressResponse savedAddress = addressService.createAddress(request, userId);
         return ResponseEntity.ok(savedAddress);
     }
 
     /**
      * DELETE /users/me/addresses/{addressId}
-     * Delete a specific address by ID for the currently authenticated user.
-     *
-     * @param addressId ID of the address to delete
-     * @return HTTP 204 No Content
      */
     @DeleteMapping("/me/addresses/{addressId}")
     @Operation(summary = "Delete address")
     public ResponseEntity<Void> deleteAddress(@PathVariable String addressId) {
-        userService.deleteAddress(addressId);
+        String userId = userService.getCurrentUserId(); // get current user's ID
+        addressService.deleteAddress(addressId, userId);
         return ResponseEntity.noContent().build();
     }
 }
