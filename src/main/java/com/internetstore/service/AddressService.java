@@ -4,7 +4,7 @@ import com.internetstore.dto.request.AddressRequest;
 import com.internetstore.dto.response.AddressResponse;
 import com.internetstore.entity.Address;
 import com.internetstore.exception.ResourceNotFoundException;
-import com.internetstore.mapper.MapStructMapper;
+import com.internetstore.mapper.AddressMapper;
 import com.internetstore.repository.AddressRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -21,7 +21,7 @@ import java.util.List;
 public class AddressService {
 
     private final AddressRepository addressRepository;
-    private final MapStructMapper mapper;
+    private final AddressMapper addressMapper;
     private final MongoTemplate mongoTemplate;
 
     // ----------------------------
@@ -40,19 +40,19 @@ public class AddressService {
             resetUserDefaultAddress(userId);
         }
 
-        Address address = mapper.addressRequestToAddress(request);
+        Address address = addressMapper.fromRequest(request);
         address.setUserId(userId);
         address.setIsDefault(makeDefault);
 
         Address saved = addressRepository.save(address);
-        return mapper.addressToAddressResponse(saved);
+        return addressMapper.toResponse(saved);
     }
 
     /**
      * Return all addresses of a user.
      */
     public List<AddressResponse> getUserAddresses(String userId) {
-        return mapper.addressListToAddressResponseList(
+        return addressMapper.toResponseList(
                 addressRepository.findByUserId(userId)
         );
     }
@@ -63,7 +63,7 @@ public class AddressService {
     public AddressResponse getDefaultAddress(String userId) {
         Address address = addressRepository.findByUserIdAndIsDefaultTrue(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Default address not found"));
-        return mapper.addressToAddressResponse(address);
+        return addressMapper.toResponse(address);
     }
 
     /**

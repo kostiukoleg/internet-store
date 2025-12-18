@@ -5,10 +5,9 @@ import com.internetstore.dto.request.RegisterRequest;
 import com.internetstore.dto.response.AuthResponse;
 import com.internetstore.entity.User;
 import com.internetstore.exception.BadRequestException;
-import com.internetstore.mapper.MapStructMapper;
+import com.internetstore.mapper.UserMapper;
 import com.internetstore.repository.UserRepository;
 import com.internetstore.security.JwtUtils;
-import com.internetstore.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,30 +15,54 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.util.stream.Collectors;
 
 /**
- * Service for handling authentication and registration.
- * Encapsulates Spring Security authentication and JWT token generation.
+ * Service responsible for authentication logic:
+ * - user login
+ * - user registration
+ * - JWT generation
  */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final AuthenticationManager authenticationManager; // Handles authentication
-    private final UserRepository userRepository; // User data access
-    private final PasswordEncoder passwordEncoder; // Password hashing
-    private final JwtUtils jwtUtils; // JWT creation and validation
-    private final MapStructMapper mapper; // DTO <-> Entity mapping
+    /**
+     * Spring Security authentication manager.
+     * Delegates authentication to AuthenticationProvider (DAO provider).
+     */
+    private final AuthenticationManager authenticationManager;
 
     /**
-     * Authenticate user and generate JWT token.
+     * Repository for accessing users in MongoDB.
+     */
+    private final UserRepository userRepository;
+
+    /**
+     * Password encoder (BCrypt).
+     */
+    private final PasswordEncoder passwordEncoder;
+
+    /**
+     * Utility class for JWT generation and validation.
+     */
+    private final JwtUtils jwtUtils;
+
+    /**
+     * MapStruct mapper for converting DTOs to entities.
+     */
+    private final UserMapper userMapper;
+
+    /**
+     * Authenticate user credentials and return JWT.
      *
-     * @param loginRequest contains email and password
+     * @param loginRequest email + password
      * @return AuthResponse with JWT and user info
      */
     public AuthResponse login(LoginRequest loginRequest) {
-        // Authenticate user credentials
+
+        // Authenticate user using Spring Security
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getEmail(),
@@ -47,72 +70,72 @@ public class AuthService {
                 )
         );
 
-        // Set authentication context for current session
+        // Store authentication in security context
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        /*
+         * IMPORTANT:
+         * This cast is VALID ONLY if:
+         * - User implements UserDetails
+         * - UserDetailsService returns User
+         */
+        User user = (User) authentication.getPrincipal();
+
+        // Generate JWT token using user email as subject
+        String jwt = jwtUtils.generateJwtToken(user.getEmail());
+
+        return buildAuthResponse(user, jwt);
+    }
+
+    /**
+     * Register a new user and immediately issue JWT.
+     *
+     * @param registerRequest registration data
+     * @return AuthResponse with JWT
+     */
+    public AuthResponse register(RegisterRequest registerRequest) {
+
+        // Prevent duplicate email registration
+        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+            throw new BadRequestException("Email is already taken");
+        }
+
+        // Map request DTO to User entity
+        User user = userMapper.fromRegisterRequest(registerRequest);
+
+        // Encode password before saving
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+
+        // Enable user account
+        user.setEnabled(true);
+
+        // Persist user
+        User savedUser = userRepository.save(user);
+
         // Generate JWT token
-        String jwt = jwtUtils.generateJwtToken(authentication);
+        String jwt = jwtUtils.generateJwtToken(savedUser.getEmail());
 
-        // Get user details
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        User user = userPrincipal.user();
+        return buildAuthResponse(savedUser, jwt);
+    }
 
-        // Build response DTO
+    /**
+     * Build authentication response DTO.
+     *
+     * @param user authenticated user
+     * @param jwt generated JWT token
+     * @return AuthResponse
+     */
+    private AuthResponse buildAuthResponse(User user, String jwt) {
         return AuthResponse.builder()
                 .accessToken(jwt)
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .roles(user.getRoles().stream()
-                        .map(Enum::name)
-                        .collect(Collectors.toList()))
-                .build();
-    }
-
-    /**
-     * Register a new user and automatically authenticate.
-     *
-     * @param registerRequest contains user registration info
-     * @return AuthResponse with JWT and user info
-     * @throws BadRequestException if email is already taken
-     */
-    public AuthResponse register(RegisterRequest registerRequest) {
-        // Check for existing email
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            throw new BadRequestException("Email is already taken!");
-        }
-
-        // Map registration request to user entity
-        User user = mapper.registerRequestToUser(registerRequest);
-
-        // Encode password
-        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-
-        // Save user in database
-        User savedUser = userRepository.save(user);
-
-        // Automatically authenticate new user
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        registerRequest.getEmail(),
-                        registerRequest.getPassword()
+                .roles(
+                        user.getRoles().stream()
+                                .map(Enum::name)
+                                .collect(Collectors.toList())
                 )
-        );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        // Generate JWT
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
-        // Build response DTO
-        return AuthResponse.builder()
-                .accessToken(jwt)
-                .email(savedUser.getEmail())
-                .firstName(savedUser.getFirstName())
-                .lastName(savedUser.getLastName())
-                .roles(savedUser.getRoles().stream()
-                        .map(Enum::name)
-                        .collect(Collectors.toList()))
                 .build();
     }
 }

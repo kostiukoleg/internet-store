@@ -7,7 +7,7 @@ import com.internetstore.entity.CartItem;
 import com.internetstore.entity.Product;
 import com.internetstore.exception.BadRequestException;
 import com.internetstore.exception.ResourceNotFoundException;
-import com.internetstore.mapper.MapStructMapper;
+import com.internetstore.mapper.CartMapper;
 import com.internetstore.repository.CartRepository;
 import com.internetstore.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
-    private final MapStructMapper mapper;
+    private final CartMapper cartMapper;
 
     /**
      * Get current user's cart. If the cart does not exist, return an empty cart with zero total.
@@ -39,7 +39,7 @@ public class CartService {
                         .updatedAt(LocalDateTime.now())
                         .build());
 
-        return mapper.cartToCartResponse(cart);
+        return cartMapper.toResponse(cart);
     }
 
     /**
@@ -82,7 +82,7 @@ public class CartService {
                     .price(product.getPrice())
                     .quantity(request.getQuantity())
                     .image(product.getImages() != null && !product.getImages().isEmpty() ?
-                            product.getImages().get(0) : null)
+                            product.getImages().get(0).getUrl() : null)
                     .build();
             cart.getItems().add(newItem);
         }
@@ -92,7 +92,7 @@ public class CartService {
         cart.setUpdatedAt(LocalDateTime.now());
 
         Cart savedCart = cartRepository.save(cart);
-        return mapper.cartToCartResponse(savedCart);
+        return cartMapper.toResponse(savedCart);
     }
 
     /**
@@ -119,7 +119,7 @@ public class CartService {
         cart.setUpdatedAt(LocalDateTime.now());
 
         Cart savedCart = cartRepository.save(cart);
-        return mapper.cartToCartResponse(savedCart);
+        return cartMapper.toResponse(savedCart);
     }
 
     /**

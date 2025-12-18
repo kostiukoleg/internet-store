@@ -6,7 +6,7 @@ import com.internetstore.entity.*;
 import com.internetstore.enums.OrderStatus;
 import com.internetstore.exception.BadRequestException;
 import com.internetstore.exception.ResourceNotFoundException;
-import com.internetstore.mapper.MapStructMapper;
+import com.internetstore.mapper.OrderMapper;
 import com.internetstore.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,7 +37,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final AddressRepository addressRepository;
     private final UserRepository userRepository; // Needed to fetch current user by email
-    private final MapStructMapper mapper;
+    private final OrderMapper orderMapper;
 
     /**
      * Create a new order from the user's cart.
@@ -109,7 +109,7 @@ public class OrderService {
         // Clear user's cart
         cartRepository.deleteById(cart.getId());
 
-        return mapper.orderToOrderResponse(savedOrder);
+        return orderMapper.toResponse(savedOrder);
     }
 
     /**
@@ -119,7 +119,7 @@ public class OrderService {
         User user = getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
         return orderRepository.findByUserId(user.getId(), pageable)
-                .map(mapper::orderToOrderResponse);
+                .map(orderMapper::toResponse);
     }
 
     /**
@@ -137,7 +137,7 @@ public class OrderService {
             throw new AccessDeniedException("Access denied");
         }
 
-        return mapper.orderToOrderResponse(order);
+        return orderMapper.toResponse(order);
     }
 
     /**
@@ -155,7 +155,7 @@ public class OrderService {
         order.setStatus(status);
         order.setUpdatedAt(LocalDateTime.now());
 
-        return mapper.orderToOrderResponse(orderRepository.save(order));
+        return orderMapper.toResponse(orderRepository.save(order));
     }
 
     /**
@@ -168,7 +168,7 @@ public class OrderService {
 
         return orderRepository.findByStatus(status)
                 .stream()
-                .map(mapper::orderToOrderResponse)
+                .map(orderMapper::toResponse)
                 .collect(Collectors.toList());
     }
 

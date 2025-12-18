@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  * Handles login and registration endpoints for the application.
  */
 @RestController
-@RequestMapping("/auth") // Base path for authentication endpoints
+@RequestMapping("/api/auth") // Base path for authentication endpoints
 @RequiredArgsConstructor // Lombok generates constructor for final fields
 @Tag(name = "Authentication", description = "Authentication endpoints") // Swagger/OpenAPI documentation
 public class AuthController {

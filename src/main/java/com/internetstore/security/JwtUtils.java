@@ -2,69 +2,68 @@ package com.internetstore.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
 /**
- * Utility class for generating and validating JWT tokens.
+ * Utility class for generating and validating JSON Web Tokens (JWT).
  * <p>
- * This class is responsible for creating JWT tokens using HS512 signature,
- * extracting the email (subject) from tokens, and validating token integrity and expiration.
+ * Uses a secret key defined in JwtProperties for signing the tokens
+ * and provides methods to generate tokens, extract email, and validate tokens.
  */
-@Slf4j
 @Component
 public class JwtUtils {
 
-    // Secret key for signing JWTs; must be sufficiently long for HS512 (at least 64 bytes)
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    // Expiration in milliseconds
-    @Value("${jwt.expiration}")
-    private long jwtExpirationMs;
+    private final JwtProperties properties;
+    private Key key;
 
     /**
-     * Returns a Key object from the secret for signing/verifying JWTs.
-     * Uses HMAC-SHA512.
+     * Constructor injection for JwtProperties.
+     *
+     * @param properties JWT configuration properties
      */
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    public JwtUtils(JwtProperties properties) {
+        this.properties = properties;
     }
 
     /**
-     * Generate JWT token for authenticated user.
-     *
-     * @param authentication the authentication object containing principal
-     * @return JWT token as String
+     * Initializes the signing key from the secret in JwtProperties.
+     * <p>
+     * This method is called once after the bean is constructed.
      */
-    public String generateJwtToken(Authentication authentication) {
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+    @PostConstruct
+    public void init() {
+        key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
+    }
 
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
-
+    /**
+     * Generates a JWT token for the given email (username).
+     *
+     * @param email the subject of the token (user identifier)
+     * @return a signed JWT token string
+     */
+    public String generateJwtToken(String email) {
         return Jwts.builder()
-                .setSubject(userPrincipal.getEmail()) // store email as subject
-                .setIssuedAt(now) // issued time
-                .setExpiration(expiryDate) // expiration time
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512) // HS512 signing
+                .setSubject(email)
+                .setIssuedAt(new Date()) // Current time
+                .setExpiration(new Date(System.currentTimeMillis() + properties.getExpiration())) // Expiration time
+                .signWith(key, SignatureAlgorithm.HS256) // Sign with HMAC SHA-256
                 .compact();
     }
 
     /**
-     * Extract the email (subject) from the JWT token.
+     * Extracts the email (subject) from a JWT token.
      *
-     * @param token JWT token
-     * @return email stored in token
+     * @param token the JWT token string
+     * @return the email/username encoded in the token
      */
     public String getEmailFromJwtToken(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(key) // Set signing key for validation
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
@@ -72,27 +71,23 @@ public class JwtUtils {
     }
 
     /**
-     * Validate the JWT token for integrity, expiration, and correct signature.
+     * Validates a JWT token.
      *
-     * @param authToken JWT token
-     * @return true if valid, false otherwise
+     * @param token the JWT token string
+     * @return true if the token is valid, false otherwise
      */
-    public boolean validateJwtToken(String authToken) {
+    public boolean validateJwtToken(String token) {
         try {
             Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
+                    .setSigningKey(key)
                     .build()
-                    .parseClaimsJws(authToken);
-            return true; // token is valid
-        } catch (SecurityException | MalformedJwtException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
-        } catch (ExpiredJwtException e) {
-            log.warn("JWT token is expired: {}", e.getMessage());
-        } catch (UnsupportedJwtException e) {
-            log.error("JWT token is unsupported: {}", e.getMessage());
-        } catch (IllegalArgumentException e) {
-            log.error("JWT claims string is empty: {}", e.getMessage());
+                    .parseClaimsJws(token); // Throws exception if invalid
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            // Token is invalid, expired, or malformed
+            // Optionally, you can log the error for debugging:
+            // logger.error("Invalid JWT token: {}", e.getMessage());
+            return false;
         }
-        return false;
     }
 }

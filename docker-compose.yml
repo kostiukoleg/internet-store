@@ -1,48 +1,18 @@
-services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/internet-store
-      - JWT_SECRET=mySuperSecretJWTKeyForInternetStoreApplication2024
-      - JWT_EXPIRATION=86400000
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - internet-store-network
+version: '3.8'
 
+services:
   mongodb:
-    image: mongo:6.0
-    container_name: internet-store-mongo
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_DATABASE=internet-store
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
     volumes:
       - mongodb_data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/internet-store --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-    networks:
-      - internet-store-network
 
 volumes:
   mongodb_data:
-
-networks:
-  internet-store-network:
-    driver: bridge

@@ -1,23 +1,17 @@
 package com.internetstore.service;
 
-import com.internetstore.dto.request.AddressRequest;
 import com.internetstore.dto.request.UserUpdateRequest;
 import com.internetstore.dto.response.AddressResponse;
 import com.internetstore.dto.response.UserResponse;
-import com.internetstore.entity.Address;
 import com.internetstore.entity.User;
 import com.internetstore.exception.ResourceNotFoundException;
-import com.internetstore.mapper.MapStructMapper;
+import com.internetstore.mapper.AddressMapper;
+import com.internetstore.mapper.UserMapper;
 import com.internetstore.repository.AddressRepository;
 import com.internetstore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,28 +23,28 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
-    private final MapStructMapper mapper;
-    private final MongoTemplate mongoTemplate;
+    private final UserMapper userMapper;
+    private final AddressMapper addressMapper;
 
     // -----------------------
     // Public API
     // -----------------------
 
     public UserResponse getCurrentUser() {
-        return mapper.userToUserResponse(fetchCurrentUser());
+        return userMapper.toUserResponse(fetchCurrentUser());
     }
 
     public UserResponse updateUser(UserUpdateRequest updateRequest) {
         User user = fetchCurrentUser();
         applyUserUpdates(user, updateRequest);
         user.setUpdatedAt(LocalDateTime.now());
-        return mapper.userToUserResponse(userRepository.save(user));
+        return userMapper.toUserResponse(userRepository.save(user));
     }
 
     public List<AddressResponse> getUserAddresses() {
         String userId = fetchCurrentUser().getId();
         return addressRepository.findByUserId(userId).stream()
-                .map(mapper::addressToAddressResponse)
+                .map(addressMapper::toResponse)
                 .toList();
     }
 

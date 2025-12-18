@@ -42,7 +42,7 @@ public class Product {
     private String category;
 
     /** List of image URLs for the product */
-    private List<String> images;
+    private List<ImageItem> images;
 
     /** Average rating from reviews */
     private BigDecimal rating;
@@ -51,7 +51,7 @@ public class Product {
     private Integer reviewCount;
 
     /** Whether the product is active and visible in the store */
-    private boolean active;
+    private Boolean active;
 
     /** Timestamp when the product was created */
     private LocalDateTime createdAt;

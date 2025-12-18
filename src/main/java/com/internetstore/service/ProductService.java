@@ -4,7 +4,7 @@ import com.internetstore.dto.response.ProductFilterResponse;
 import com.internetstore.dto.response.ProductResponse;
 import com.internetstore.entity.Product;
 import com.internetstore.exception.ResourceNotFoundException;
-import com.internetstore.mapper.MapStructMapper;
+import com.internetstore.mapper.ProductMapper;
 import com.internetstore.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class ProductService {
 
     private final ProductRepository productRepository;
-    private final MapStructMapper mapper;
+    private final ProductMapper productMapper;
 
     /**
      * Fetch paginated products with optional filtering by search term, category, and price range.
@@ -55,7 +55,7 @@ public class ProductService {
         }
 
         // Map Product entities to DTO responses
-        return products.map(mapper::productToProductResponse);
+        return products.map(productMapper::toResponse);
     }
 
     /**
@@ -68,7 +68,7 @@ public class ProductService {
     public ProductResponse getProduct(String id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
-        return mapper.productToProductResponse(product);
+        return productMapper.toResponse(product);
     }
 
     /**
@@ -79,11 +79,11 @@ public class ProductService {
      */
     public ProductResponse createProduct(ProductResponse productResponse) {
         // Convert DTO to entity
-        Product product = mapper.productResponseToProduct(productResponse);
+        Product product = productMapper.fromResponse(productResponse);
         // Save entity to database
         Product savedProduct = productRepository.save(product);
         // Convert entity back to DTO for response
-        return mapper.productToProductResponse(savedProduct);
+        return productMapper.toResponse(savedProduct);
     }
 
     /**
@@ -111,7 +111,7 @@ public class ProductService {
 
         // Save updated entity
         Product updatedProduct = productRepository.save(existingProduct);
-        return mapper.productToProductResponse(updatedProduct);
+        return productMapper.toResponse(updatedProduct);
     }
 
     /**

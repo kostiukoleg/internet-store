@@ -1,19 +1,18 @@
 package com.internetstore.security;
 
-import com.internetstore.entity.User;
 import com.internetstore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementation of Spring Security's UserDetailsService.
+ * Implementation of Spring Security's UserDetailsService interface.
  * <p>
- * Responsible for loading UserDetails (UserPrincipal) from the database
- * using the email as the username.
+ * This service is used by Spring Security to load user-specific data
+ * during authentication. It fetches user information from the database
+ * using UserRepository.
  */
 @Service
 @RequiredArgsConstructor
@@ -22,20 +21,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepository userRepository;
 
     /**
-     * Load user by email (used as username for authentication).
+     * Locates the user by their email (used as username).
      *
-     * @param email the email of the user
-     * @return UserPrincipal implementing UserDetails
-     * @throws UsernameNotFoundException if user not found
+     * @param email the email of the user attempting to authenticate
+     * @return a UserDetails object containing user information and authorities
+     * @throws UsernameNotFoundException if no user with the given email exists
      */
     @Override
-    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // Fetch the user from MongoDB using email
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
-
-        // Wrap the User entity in UserPrincipal which implements UserDetails
-        return new UserPrincipal(user);
+        return userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found with email: " + email));
     }
 }

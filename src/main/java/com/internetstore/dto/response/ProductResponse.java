@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.internetstore.entity.ImageItem;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,7 +22,7 @@ public class ProductResponse {
     private String category;
 
     @Builder.Default
-    private List<String> images = List.of();
+    private List<ImageItem> images = List.of();
 
     @Builder.Default
     private BigDecimal rating = BigDecimal.ZERO;
